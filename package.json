@@ -7,12 +7,15 @@
     "seed": "sequelize-cli db:seed:all"
   },
   "dependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mysql2": "^3.22.3",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -1,15 +1,21 @@
 // app.ts
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import userRoutes from "./routes/user.route";
 import adminRoutes from "./routes/admin.route";
 import authRoutes from "./routes/auth.route";
 import publicRoutes from "./routes/public.route";
 
 const app = express();
-
+app.use(compression());
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 
 app.use("/api", authRoutes);
 app.use("/api/user", userRoutes);
