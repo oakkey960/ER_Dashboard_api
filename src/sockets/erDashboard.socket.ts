@@ -35,6 +35,8 @@ function getFilterKey(filter: Record<string, any>): string {
     search: filter.search ?? "",
     visitdate: filter.visitdate ?? "",
     locationid: filter.locationid ?? ER_SOCKET_CONFIG.defaultFilter.locationid,
+    urgentLimit: filter.urgentLimit ?? 120,
+    warningLimit: filter.warningLimit ?? 90,
   };
   return JSON.stringify(cleanFilter);
 }

@@ -25,6 +25,9 @@ export class PatRegService {
     const limit = Math.max(1, parseInt(query.limit, 10) || 50);
     const offset = (page - 1) * limit;
 
+    const urgentLimit = parseInt(query.urgentLimit, 10) || 120;
+    const warningLimit = parseInt(query.warningLimit, 10) || 90;
+
     const search = query.search ? String(query.search).trim() : "";
 
     // ⚡ 0. Check In-Memory Cache (ส่งคืนผลลัพธ์ทันทีใน 0.1ms หากเป็น Query เดียวกันที่เพิ่งค้นหา)
@@ -162,10 +165,13 @@ export class PatRegService {
 
     allActivePat.forEach((row: any) => {
       if (row.startdatetime) {
-        const start = new Date(row.startdatetime).getTime();
+        // startdatetime ใน DB บันทึกเป็นเวลาไทย (+7)
+        // เมื่อ new Date() แปลง จะถือเป็น UTC ทำให้ค่า timestamp เร็วกว่า UTC จริงอยู่ 7 ชั่วโมง (25,200,000 ms)
+        const start =
+          new Date(row.startdatetime).getTime() - 7 * 60 * 60 * 1000;
         if (!isNaN(start)) {
           const diffMins = (now - start) / 1000 / 60;
-          if (diffMins > 90) {
+          if (diffMins >= urgentLimit) {
             urgent90Count++;
             urgent90List.push({
               id: row.id,
@@ -176,8 +182,9 @@ export class PatRegService {
               startlevel: row["pat_urgent.startlevel"],
               waiting_mins: Math.floor(diffMins),
             });
+          } else if (diffMins >= warningLimit) {
+            waiting60Count++;
           }
-          if (diffMins > 60) waiting60Count++;
         }
       }
 
@@ -198,8 +205,7 @@ export class PatRegService {
       const urgFlagStatus =
         row["pat_urgent.urg_flag_status"] || row["pat_urgent.flag_status"];
       if (urgFlagStatus) {
-        rawFlagCounts[urgFlagStatus] =
-          (rawFlagCounts[urgFlagStatus] || 0) + 1;
+        rawFlagCounts[urgFlagStatus] = (rawFlagCounts[urgFlagStatus] || 0) + 1;
       }
     });
 
@@ -215,6 +221,16 @@ export class PatRegService {
         (item: any) => item.count > 0 || flag_status.includes(item.flag_status),
       );
 
+    const activeTotal = allActivePat.length;
+    const urgent90Percent =
+      activeTotal > 0
+        ? Number(((urgent90Count / activeTotal) * 100).toFixed(2))
+        : 0;
+    const waiting60Percent =
+      activeTotal > 0
+        ? Number(((waiting60Count / activeTotal) * 100).toFixed(2))
+        : 0;
+
     const finalResult = {
       data: formattedData,
       pagination: {
@@ -225,8 +241,11 @@ export class PatRegService {
       },
       summary: {
         total,
+        activeTotal,
         urgent90Count,
+        urgent90Percent,
         waiting60Count,
+        waiting60Percent,
         triageCount,
         examiningCount,
         triageLevels: [
