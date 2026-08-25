@@ -143,10 +143,9 @@ export const getPatRegIncludes = (db: any, Op: any) => [
     required: true, // 🔹 เป็น INNER JOIN เพื่อคัดแถวที่ไม่ตรงออกจริง
     attributes: ["flag_status", "startlevel", "endlevel"],
     where: {
-      flag_status: { [Op.notIn]: ["X"] },
-      flag_show: {
-        [Op.or]: ["Y", null],
-      },
+      flag_status: { [Op.or]: [{ [Op.ne]: "X" }, null] },
+      flag_cancel: { [Op.or]: [{ [Op.ne]: "Y" }, null] },
+      flag_show: "Y",
     },
     include: [
       {
