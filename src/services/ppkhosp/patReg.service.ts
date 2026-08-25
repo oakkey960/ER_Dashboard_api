@@ -17,7 +17,7 @@ export class PatRegService {
   static async getPatRegData(query: Record<string, any>) {
     const locationid = query.locationid || "3300";
     const flag_status = parseArrayParam(query.flag_status, ["A", "B"]);
-    const flag_reg = parseArrayParam(query.flag_reg, ["1", "A", "B", "P"]);
+    const flag_reg = parseArrayParam(query.flag_reg, ["1", "A", "B", "H", "P"]);
     // const flag_reg = parseArrayParam(query.flag_reg, ["H", "G", "J"]);
     // const flag_reg = parseArrayParam(query.flag_reg, ["H", "G", "J"]);
 
@@ -117,6 +117,9 @@ export class PatRegService {
             required: true,
             where: {
               flag_status: { [Op.notIn]: ["X"] },
+              flag_show: {
+                [Op.or]: ["Y", null],
+              },
             },
             attributes: [
               [sequelize.literal("pat_urgent.startlevel"), "startlevel"],
@@ -130,7 +133,10 @@ export class PatRegService {
 
       // Query 3: คำอธิบายสถานะภาษาไทยจากตาราง pat_flag
       db.PatFlag.findAll({
-        where: { tablename: "pat_urgent", columnname: "flag_status" },
+        where: {
+          tablename: "pat_urgent",
+          columnname: "flag_status",
+        },
         attributes: ["columnvalue", "descvalue", "note"],
         raw: true,
       }),
@@ -138,13 +144,102 @@ export class PatRegService {
 
     const { count: total, rows: data } = paginatedResult;
 
-    // ปรับแต่งฟอร์แมตข้อมูล (Formatted rows)
-    const formattedData = data.map((row: any) => ({
-      ...row,
-      textcomment: filterFastTrackComment(row.textcomment),
-      ageday_raw: row.ageday,
-      ageday: formatAgeFromDays(row.ageday),
-    }));
+    // ปรับแต่งฟอร์แมตข้อมูล (Formatted rows) - เเกะ object ใหม่
+    const formattedData = data.map((row: any) => {
+      const prename = row.pt_name
+        ? ""
+        : row["pat.prename"] || row.pat?.prename || "";
+      const firstname = row.pt_name
+        ? ""
+        : row["pat.firstname"] || row.pat?.firstname || "";
+      const lastname = row.pt_name
+        ? ""
+        : row["pat.lastname"] || row.pat?.lastname || "";
+      const pt_name =
+        row.pt_name ||
+        (prename || firstname || lastname
+          ? `${prename}${firstname}  ${lastname}`
+          : null);
+
+      const gender = row.gender ?? row["pat.sex"] ?? row.pat?.sex ?? null;
+
+      const ageday_raw =
+        row.ageday_raw ??
+        row.ageday ??
+        row["pat_visit.ageday"] ??
+        row.pat_visit?.ageday ??
+        null;
+
+      const cstatsus =
+        row.cstatsus ||
+        row["flag_reg_desc.descvalue"] ||
+        row.flag_reg_desc?.descvalue ||
+        null;
+
+      const urg_flage_status =
+        row.flag_status ||
+        row["pat_urgent.flag_status"] ||
+        row.pat_urgent?.flag_status ||
+        null;
+
+      const urg_status =
+        row.urg_status ||
+        row["pat_urgent.urg_status_desc.descvalue"] ||
+        row["pat_urgent.PatFlag.descvalue"] ||
+        row.pat_urgent?.urg_status_desc?.descvalue ||
+        row.pat_urgent?.PatFlag?.descvalue ||
+        null;
+
+      const startlevel =
+        row.startlevel ??
+        row["pat_urgent.startlevel"] ??
+        row.pat_urgent?.startlevel ??
+        null;
+
+      const endlevel =
+        row.endlevel ??
+        row["pat_urgent.endlevel"] ??
+        row.pat_urgent?.endlevel ??
+        null;
+
+      const textcomment = filterFastTrackComment(
+        row.textcomment ??
+          row["ErRegistration.textcomment"] ??
+          row.ErRegistration?.textcomment ??
+          null,
+      );
+
+      const formatFlagReg = row.flag_reg === "A" ? "รับใหม่" : row.flag_reg;
+
+      // ⚡ คำนวณ display_status ตามเงื่อนไข:
+      // - ถ้า urg_status เป็น null/ว่าง: ถ้า flag_reg == "A" แสดง "รับใหม่" ไม่เช่นนั้นแสดง cstatsus
+      // - ถ้ามี urg_status ให้แสดง urg_status
+      const display_status =
+        !urg_status || String(urg_status).trim() === ""
+          ? row.flag_reg === "A" || formatFlagReg === "รับใหม่"
+            ? "รับใหม่"
+            : cstatsus
+          : urg_status;
+
+      return {
+        id: row.id,
+        hn: row.hn,
+        pt_name,
+        gender,
+        ageday: formatAgeFromDays(ageday_raw),
+        startdatetime: row.startdatetime,
+        regdatetime: row.regdatetime,
+        flag_reg: formatFlagReg,
+        cstatsus,
+        urg_flage_status,
+        urg_status,
+        display_status,
+        startlevel,
+        endlevel,
+        textcomment,
+        ageday_raw,
+      };
+    });
 
     const now = Date.now();
     let urgent90Count = 0;
