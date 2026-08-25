@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  er-dashboard-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: er_dashboard_api
+    restart: always
+    ports:
+      - "${PORTAPP:-4016}:${PORTAPP:-4016}"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production

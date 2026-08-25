@@ -23,6 +23,11 @@ const sequelize = new Sequelize(
     dialect: config.dialect || "mysql", // ระบุเป็น string เช่น 'mysql', 'postgres'
     port: Number(config.port) || 3306,
     logging: config.logging !== false ? console.log : false,
+    // timezone: "+07:00",
+    // dialectOptions: {
+    //   dateStrings: true,
+    //   typeCast: true,
+    // },
   },
 );
 
@@ -70,6 +75,54 @@ Object.keys(db).forEach((modelName) => {
     db[modelName].associate(db);
   }
 });
+
+if (db.AppUserGroup && db.AppDatasetGroup) {
+  db.AppUserGroup.hasMany(db.AppDatasetGroup, {
+    foreignKey: "groupid",
+    sourceKey: "groupid",
+    as: "DataSetGroups",
+  });
+  db.AppDatasetGroup.belongsTo(db.AppUserGroup, {
+    foreignKey: "groupid",
+    targetKey: "groupid",
+    as: "UserGroup",
+  });
+}
+
+// 11. AppUser <-> AppDatasetUser
+if (db.AppUser && db.AppDatasetUser) {
+  db.AppUser.hasMany(db.AppDatasetUser, {
+    foreignKey: "userid",
+    sourceKey: "userid",
+    as: "DataSetUsers",
+  });
+  db.AppDatasetUser.belongsTo(db.AppUser, {
+    foreignKey: "userid",
+    targetKey: "userid",
+    as: "User",
+  });
+}
+
+if (db.PatReg && db.ErRegistration) {
+  db.PatReg.hasOne(db.ErRegistration, {
+    foreignKey: "patregid",
+    sourceKey: "id",
+    as: "ErRegistration",
+  });
+  db.ErRegistration.belongsTo(db.PatReg, {
+    foreignKey: "patregid",
+    targetKey: "id",
+    as: "PatReg",
+  });
+}
+
+if (db.PatUrgent && db.PatFlag) {
+  db.PatUrgent.belongsTo(db.PatFlag, {
+    foreignKey: "flag_status",
+    sourceKey: "columnvalue",
+    as: "PatFlag",
+  });
+}
 
 // 5. ส่งออกระบบไปใช้ร่วมกัน
 db.sequelize = sequelize;
