@@ -116,10 +116,52 @@ if (db.PatReg && db.ErRegistration) {
   });
 }
 
+if (db.PatReg && db.Pat) {
+  db.PatReg.belongsTo(db.Pat, {
+    foreignKey: "hn",
+    targetKey: "hn",
+    as: "pat",
+  });
+  db.Pat.hasMany(db.PatReg, {
+    foreignKey: "hn",
+    sourceKey: "hn",
+    as: "pat_reg",
+  });
+}
+
+if (db.PatReg && db.PatVisit) {
+  db.PatReg.belongsTo(db.PatVisit, {
+    foreignKey: "patvisitid",
+    targetKey: "id",
+    as: "pat_visit",
+  });
+}
+
+if (db.PatReg && db.PatFlag) {
+  db.PatReg.belongsTo(db.PatFlag, {
+    foreignKey: "flag_reg",
+    targetKey: "columnvalue",
+    as: "flag_reg_desc",
+    scope: {
+      tablename: "pat_reg",
+      columnname: "flag_reg",
+    },
+  });
+}
+
 if (db.PatUrgent && db.PatFlag) {
   db.PatUrgent.belongsTo(db.PatFlag, {
     foreignKey: "flag_status",
-    sourceKey: "columnvalue",
+    targetKey: "columnvalue",
+    as: "urg_status_desc",
+    scope: {
+      tablename: "pat_urgent",
+      columnname: "flag_status",
+    },
+  });
+  db.PatUrgent.belongsTo(db.PatFlag, {
+    foreignKey: "flag_status",
+    targetKey: "columnvalue",
     as: "PatFlag",
   });
 }

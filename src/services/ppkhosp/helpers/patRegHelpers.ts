@@ -116,38 +116,9 @@ export const buildVisitDateCondition = (query: Record<string, any>): any => {
 export const getPatRegAttributes = (sequelize: any) => [
   "id",
   "hn",
-  [
-    sequelize.literal(
-      "(SELECT CONCAT(prename, firstName, '  ', lastName) FROM pat WHERE hn = PatReg.hn)",
-    ),
-    "pt_name",
-  ],
-  [sequelize.literal("(SELECT sex FROM pat WHERE hn = PatReg.hn)"), "gender"],
-  [
-    sequelize.literal(
-      "(SELECT ageday FROM pat_visit WHERE id = PatReg.patvisitid)",
-    ),
-    "ageday",
-  ],
   "startdatetime",
   "regdatetime",
   "flag_reg",
-  [
-    sequelize.literal(
-      "(SELECT descvalue FROM pat_flag WHERE tablename = 'pat_reg' AND columnname = 'flag_reg' AND columnvalue = PatReg.flag_reg)",
-    ),
-    "cstatsus",
-  ],
-  [sequelize.literal("pat_urgent.flag_status"), "flag_status"],
-  [
-    sequelize.literal(
-      "(SELECT pat_flag.descvalue FROM pat_flag WHERE pat_flag.tablename = 'pat_urgent' AND pat_flag.columnname = 'flag_status' AND pat_flag.columnvalue = pat_urgent.flag_status)",
-    ),
-    "urg_status",
-  ],
-  [sequelize.literal("pat_urgent.startlevel"), "startlevel"],
-  [sequelize.literal("pat_urgent.endlevel"), "endlevel"],
-  [sequelize.literal("ErRegistration.textcomment"), "textcomment"],
 ];
 
 /**
@@ -155,18 +126,46 @@ export const getPatRegAttributes = (sequelize: any) => [
  */
 export const getPatRegIncludes = (db: any, Op: any) => [
   {
+    model: db.Pat,
+    as: "pat",
+    required: false,
+    attributes: ["sex", "prename", "firstname", "lastname"],
+  },
+  {
+    model: db.PatVisit,
+    as: "pat_visit",
+    required: false,
+    attributes: ["ageday"],
+  },
+  {
     model: db.PatUrgent,
     as: "pat_urgent",
-    required: true, // 🔹 เปลี่ยนเป็น true เพื่อให้เป็น INNER JOIN และคัดแถวที่ไม่ตรงออกจริง!
-    attributes: [],
+    required: true, // 🔹 เป็น INNER JOIN เพื่อคัดแถวที่ไม่ตรงออกจริง
+    attributes: ["flag_status", "startlevel", "endlevel"],
     where: {
-      flag_status: { [Op.notIn]: ["X"] },
+      flag_status: { [Op.or]: [{ [Op.ne]: "X" }, null] },
+      flag_cancel: { [Op.or]: [{ [Op.ne]: "Y" }, null] },
+      flag_show: "Y",
     },
+    include: [
+      {
+        model: db.PatFlag,
+        as: "urg_status_desc",
+        required: false,
+        attributes: ["descvalue"],
+      },
+    ],
   },
   {
     model: db.ErRegistration,
     as: "ErRegistration",
     required: false,
-    attributes: [],
+    attributes: ["textcomment"],
+  },
+  {
+    model: db.PatFlag,
+    as: "flag_reg_desc",
+    required: false,
+    attributes: ["descvalue"],
   },
 ];
